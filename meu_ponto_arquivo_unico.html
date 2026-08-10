@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Meu Ponto">
+<title>Meu Ponto</title>
+<style>
+:root{--bg:#f3f4f6;--card:#fff;--text:#111827;--muted:#6b7280;--line:#e5e7eb;--accent:#2563eb;--good:#059669;--warn:#d97706;--bad:#dc2626}
+*{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;background:var(--bg);color:var(--text);padding-bottom:82px}
+header{padding:calc(env(safe-area-inset-top) + 18px) 18px 16px;background:#111827;color:#fff;position:sticky;top:0;z-index:5}
+h1{font-size:26px;margin:0 0 4px}.sub{opacity:.72;font-size:13px}
+main{max-width:760px;margin:auto;padding:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px #00000008}
+.clock{text-align:center;font-size:42px;font-weight:750;letter-spacing:-1px}.date{text-align:center;color:var(--muted);margin:3px 0 14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.btn{border:0;border-radius:14px;padding:16px 10px;font-size:15px;font-weight:700;background:#eef2ff;color:#1e40af}.btn:active{transform:scale(.98)}.btn.primary{background:var(--accent);color:#fff}.btn.good{background:#ecfdf5;color:#047857}.btn.warn{background:#fffbeb;color:#92400e}.btn.danger{background:#fef2f2;color:#b91c1c}.btn:disabled{opacity:.4}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{padding:12px;border:1px solid var(--line);border-radius:14px}.stat b{display:block;font-size:19px}.stat span{font-size:12px;color:var(--muted)}
+.row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}.row:last-child{border:0}.tag{font-size:12px;padding:4px 8px;border-radius:999px;background:#f3f4f6}
+h2{font-size:17px;margin:0 0 12px}.small{font-size:12px;color:var(--muted)} input,select{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;font-size:16px;background:#fff}label{font-size:12px;color:var(--muted);display:block;margin:10px 0 5px}
+.tabs{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:center;gap:5px;padding:8px 8px calc(8px + env(safe-area-inset-bottom));z-index:10}.tab{flex:1;max-width:180px;border:0;background:none;padding:9px 4px;color:var(--muted);font-weight:650}.tab.active{color:var(--accent)}
+.hidden{display:none!important}.notice{font-size:13px;background:#eff6ff;border-radius:12px;padding:11px;color:#1e40af;margin-top:10px}
+@media(max-width:390px){.clock{font-size:36px}.stats{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<header><h1>Meu Ponto</h1><div class="sub">Seu relógio de ponto pessoal</div></header>
+<main>
+<section id="home">
+<div class="card">
+<div id="clock" class="clock">00:00:00</div><div id="date" class="date"></div>
+<div id="next" class="notice">Pronto para bater a entrada.</div>
+</div>
+<div class="card">
+<h2>Registrar ponto</h2>
+<div class="grid">
+<button class="btn primary" id="entry">🟢 Entrada</button>
+<button class="btn warn" id="lunchStart">🍽️ Início almoço</button>
+<button class="btn good" id="lunchEnd">🍽️ Fim almoço</button>
+<button class="btn warn" id="kidsStart">🚗 Buscar filhos</button>
+<button class="btn good" id="kidsEnd">🚗 Retorno</button>
+<button class="btn danger" id="exit">🔴 Saída</button>
+</div>
+</div>
+<div class="card">
+<h2>Hoje</h2>
+<div class="stats">
+<div class="stat"><b id="worked">00:00</b><span>Trabalhado</span></div>
+<div class="stat"><b id="extra">00:00</b><span>Hora extra</span></div>
+<div class="stat"><b id="balance">00:00</b><span>Banco de horas</span></div>
+</div>
+<div id="todayRows"></div>
+</div>
+</section>
+
+<section id="history" class="hidden">
+<div class="card"><h2>Histórico</h2><div id="historyList"></div></div>
+</section>
+
+<section id="settings" class="hidden">
+<div class="card">
+<h2>Configurações</h2>
+<div class="notice">Sua regra está configurada para hora extra somente depois de cumprir a jornada diária. A saída para buscar os filhos é descontada do tempo trabalhado.</div>
+<label>Salário mensal (R$)</label><input id="salary" type="number" min="0" step="0.01" placeholder="Ex.: 2500">
+<label>Percentual da hora extra (%)</label><input id="extraPct" type="number" min="0" step="1" value="50">
+<label>Divisor mensal para calcular a hora</label><input id="divisor" type="number" min="1" step="1" value="220">
+<button class="btn primary" id="saveSettings" style="width:100%;margin-top:12px">Salvar configurações</button>
+<div id="money" class="notice"></div>
+</div>
+<div class="card">
+<h2>Jornada cadastrada</h2>
+<div class="row"><span>Segunda a quinta</span><b>07:30–17:30</b></div>
+<div class="row"><span>Almoço</span><b>13:00–14:00</b></div>
+<div class="row"><span>Buscar filhos</span><b>16:10–16:30</b></div>
+<div class="row"><span>Sexta</span><b>07:30–16:30</b></div>
+<div class="row"><span>Almoço</span><b>13:00–14:00</b></div>
+<div class="row"><span>Buscar filhos</span><b>16:00–16:20</b></div>
+</div>
+<div class="card"><button class="btn danger" id="clear">Apagar todos os registros</button></div>
+</section>
+</main>
+<nav class="tabs"><button class="tab active" data-page="home">🏠 Hoje</button><button class="tab" data-page="history">📅 Histórico</button><button class="tab" data-page="settings">⚙️ Configurações</button></nav>
+<script>
+const KEY="meu_ponto_v1", SET="meu_ponto_settings";
+const defaults={salary:2500,extraPct:50,divisor:220};
+let data=JSON.parse(localStorage.getItem(KEY)||"{}"), settings={...defaults,...JSON.parse(localStorage.getItem(SET)||"{}")};
+const $=id=>document.getElementById(id);
+function dateKey(d=new Date()){return d.toISOString().slice(0,10)}
+function fmtMin(m){m=Math.max(0,Math.round(m));let s=m<0?"-":"";return s+String(Math.floor(m/60)).padStart(2,"0")+":"+String(m%60).padStart(2,"0")}
+function parseTime(t){let [h,m]=t.split(":").map(Number);return h*60+m}
+function today(){let k=dateKey(); if(!data[k]) data[k]={}; return data[k]}
+function save(){localStorage.setItem(KEY,JSON.stringify(data))}
+function nowTime(){return new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}
+function minNow(){let d=new Date();return d.getHours()*60+d.getMinutes()+d.getSeconds()/60}
+function dayInfo(k=dateKey()){
+ let d=new Date(k+"T12:00:00"), dow=d.getDay(), t=data[k]||{};
+ let end=dow===5?parseTime("16:30"):dow>=1&&dow<=4?parseTime("17:30"):0;
+ let start=parseTime("07:30"), lunch=60;
+ let target=end? (end-start-lunch):0;
+ return {dow,start,end,target,lunch,t};
+}
+function intervals(t){
+ let arr=[];
+ if(t.entry && t.exit) arr.push([parseTime(t.entry),parseTime(t.exit)]);
+ if(t.lunchStart&&t.lunchEnd) arr.push([parseTime(t.lunchStart),parseTime(t.lunchEnd)]);
+ if(t.kidsStart&&t.kidsEnd) arr.push([parseTime(t.kidsStart),parseTime(t.kidsEnd)]);
+ if(!t.entry) return [];
+ let end=t.exit?parseTime(t.exit):minNow();
+ let worked=end-parseTime(t.entry);
+ if(t.lunchStart&&t.lunchEnd) worked-=parseTime(t.lunchEnd)-parseTime(t.lunchStart);
+ if(t.kidsStart&&t.kidsEnd) worked-=parseTime(t.kidsEnd)-parseTime(t.kidsStart);
+ return Math.max(0,worked);
+}
+function calc(k){
+ let {target,t}=dayInfo(k), w=intervals(t), bal=w-target;
+ return {w,target,extra:Math.max(0,bal),deficit:Math.max(0,-bal),bal};
+}
+function setStamp(field){
+ let t=today(); t[field]=nowTime(); save(); render();
+}
+["entry","lunchStart","lunchEnd","kidsStart","kidsEnd","exit"].forEach(id=>$(id).onclick=()=>setStamp(id));
+function render(){
+ let now=new Date(); $("clock").textContent=now.toLocaleTimeString("pt-BR");
+ $("date").textContent=now.toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long"});
+ let k=dateKey(), c=calc(k), t=today();
+ $("worked").textContent=fmtMin(c.w); $("extra").textContent=fmtMin(c.extra); $("balance").textContent=(c.bal>=0?"+":"-")+fmtMin(Math.abs(c.bal));
+ const labels={entry:"Entrada",lunchStart:"Início almoço",lunchEnd:"Fim almoço",kidsStart:"Saída buscar filhos",kidsEnd:"Retorno",exit:"Saída"};
+ $("todayRows").innerHTML=Object.entries(labels).map(([f,l])=>t[f]?`<div class="row"><span>${l}</span><b>${t[f]}</b></div>`:"").join("");
+ let msg="Pronto para bater a entrada.";
+ if(t.entry&&!t.exit) msg=`Jornada prevista: ${fmtMin(c.target)} • faltam ${fmtMin(Math.max(0,c.target-c.w))} para cumprir a jornada.`;
+ if(t.exit) msg=c.extra?`Hoje você fez ${fmtMin(c.extra)} de hora extra.`:`Hoje ficou ${fmtMin(c.deficit)} abaixo da jornada.`;
+ $("next").textContent=msg;
+ renderHistory(); renderMoney();
+}
+function renderHistory(){
+ let keys=Object.keys(data).sort().reverse();
+ $("historyList").innerHTML=keys.length?keys.map(k=>{let c=calc(k),d=new Date(k+"T12:00:00");return `<div class="row"><div><b>${d.toLocaleDateString("pt-BR")}</b><div class="small">Trabalhado ${fmtMin(c.w)} • Jornada ${fmtMin(c.target)}</div></div><span class="tag">${c.extra?"+":c.deficit?"-":""}${fmtMin(c.extra||c.deficit)}</span></div>`}).join(""):"<div class='small'>Nenhum registro ainda.</div>";
+}
+function renderMoney(){
+ let c=calc(dateKey()), hour=(Number(settings.salary)||0)/(Number(settings.divisor)||220), val=c.extra*hour*(1+Number(settings.extraPct||0)/100);
+ $("money").textContent=`Hora base: R$ ${hour.toFixed(2)} • Hora extra de hoje: R$ ${val.toFixed(2)}`;
+}
+$("saveSettings").onclick=()=>{settings.salary=Number($("salary").value)||0;settings.extraPct=Number($("extraPct").value)||0;settings.divisor=Number($("divisor").value)||220;localStorage.setItem(SET,JSON.stringify(settings));render()};
+$("salary").value=settings.salary;$("extraPct").value=settings.extraPct;$("divisor").value=settings.divisor;
+$("clear").onclick=()=>{if(confirm("Apagar todos os registros?")){data={};save();render()}};
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));b.classList.add("active");["home","history","settings"].forEach(p=>$(p).classList.toggle("hidden",p!==b.dataset.page))});
+if("serviceWorker" in navigator) window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+setInterval(render,1000);render();
+</script>
+</body>
+</html>
